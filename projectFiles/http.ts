@@ -2,44 +2,30 @@ import {
   Application,
   Router,
   send,
+  Status,
 } from "https://deno.land/x/oak@v6.3.2/mod.ts";
-import { getMovie, getMovies } from "./api/movies/methods.ts";
+import { logger } from "./api/middleware/logger.ts";
+import { timing } from "./api/middleware/timing.ts";
+import { errors } from "./api/middleware/errors.ts";
+import { router } from "./api/routes.ts";
 
 const app = new Application();
-const router = new Router();
 
-// can chain routes
-router.get("/hi", (ctx) => {
-  ctx.response.body = {
-    hello: {
-      from: {
-        the: {
-          router: "hi",
-        },
-      },
-    },
-  };
-})
-  .get("/api/movies", async (ctx) => {
-    const movies = await getMovies();
-    ctx.response.body = movies;
-  })
-  .get("/api/movie/:id", async (ctx) => {
-    const movie = await getMovie(ctx.params.id);
-    ctx.response.body = movie;
-  });
+// * -- middleware -- * //
+// don't call function - make reference to it
+app.use(logger);
+app.use(timing);
+app.use(errors);
 
+// * -- set routes -- * //
 app.use(router.routes());
 
-app.use(async (ctx) => {
-  await send(ctx, ctx.request.url.pathname, {
+// * -- load static files -- * //
+app.use(async (context) => {
+  await send(context, context.request.url.pathname, {
     root: `${Deno.cwd()}/static`,
     index: "index.html",
   });
-});
-
-app.use((ctx) => {
-  ctx.response.body = "Hello World";
 });
 
 await app.listen({ port: 8000 });
